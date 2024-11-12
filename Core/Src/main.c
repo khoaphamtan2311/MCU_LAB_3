@@ -6,7 +6,7 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2024 STMicroelectronics.
+  * <h2><center>&copy; Copyright (c) 2023 STMicroelectronics.
   * All rights reserved.</center></h2>
   *
   * This software component is licensed by ST under BSD 3-Clause license,
@@ -22,12 +22,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "button.h"
-#include "fsm_auto.h"
-#include "fsm_man.h"
-#include "software_timer.h"
-#include "global.h"
-
+#include "initial.h"
+#include "led_display.h"
+#include "input_processing.h"
+#include "input_reading.h"
+#include "timer.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -94,17 +93,31 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-  HAL_TIM_Base_Start_IT(&htim2);
-//  status = INIT;
+  HAL_TIM_Base_Start_IT (& htim2 );
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  init_buffer();
+  LedInitial();
+  setTimer0(10);
+  setTimer1(10);
+  setTimer2(10);
   while (1)
   {
+	  fsm_for_input_processing();
+	  if (get_timer2_flag()){
+		  LEDScanning();
+		  setTimer2(10);
+	  }
+	  LedDispMode();
+	  UpdateDurationValue();
+	 if (get_timer1_flag()){
+		  HAL_GPIO_TogglePin(LED_SINGLE_GPIO_Port,LED_SINGLE_Pin);
+		  setTimer1(500);
+	  }
     /* USER CODE END WHILE */
-	  fsm_auto_run();
-	  fsm_man_run();
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -204,35 +217,38 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, LED_A_Pin|LED_B_Pin|LED_C_Pin|LED_D_Pin
-                          |LED_E_Pin|LED_F_Pin|LED_G_Pin|DIGIT_1_Pin
-                          |DIGIT_2_Pin|DIGIT_3_Pin|DIGIT_4_Pin|LED_RED_1_Pin
-                          |LED_YELLOW_1_Pin|LED_GREEN_1_Pin|MODE_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, out0_Pin|a_Pin|b_Pin|c_Pin
+                          |d_Pin|e_Pin|f_Pin|g_Pin
+                          |EN1_Pin|EN2_Pin|EN3_Pin|EN4_Pin
+                          |MODE_Pin|LED_SINGLE_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, LED_RED_2_Pin|LED_YELLOW_2_Pin|LED_GREEN_2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, G1_Pin|R2_Pin|Y2_Pin|G2_Pin
+                          |R1_Pin|Y1_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : LED_A_Pin LED_B_Pin LED_C_Pin LED_D_Pin
-                           LED_E_Pin LED_F_Pin LED_G_Pin DIGIT_1_Pin
-                           DIGIT_2_Pin DIGIT_3_Pin DIGIT_4_Pin LED_RED_1_Pin
-                           LED_YELLOW_1_Pin LED_GREEN_1_Pin MODE_Pin */
-  GPIO_InitStruct.Pin = LED_A_Pin|LED_B_Pin|LED_C_Pin|LED_D_Pin
-                          |LED_E_Pin|LED_F_Pin|LED_G_Pin|DIGIT_1_Pin
-                          |DIGIT_2_Pin|DIGIT_3_Pin|DIGIT_4_Pin|LED_RED_1_Pin
-                          |LED_YELLOW_1_Pin|LED_GREEN_1_Pin|MODE_Pin;
+  /*Configure GPIO pins : out0_Pin a_Pin b_Pin c_Pin
+                           d_Pin e_Pin f_Pin g_Pin
+                           EN1_Pin EN2_Pin EN3_Pin EN4_Pin
+                           MODE_Pin LED_SINGLE_Pin */
+  GPIO_InitStruct.Pin = out0_Pin|a_Pin|b_Pin|c_Pin
+                          |d_Pin|e_Pin|f_Pin|g_Pin
+                          |EN1_Pin|EN2_Pin|EN3_Pin|EN4_Pin
+                          |MODE_Pin|LED_SINGLE_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : BUTTON_1_Pin BUTTON_2_Pin BUTTON_3_Pin */
-  GPIO_InitStruct.Pin = BUTTON_1_Pin|BUTTON_2_Pin|BUTTON_3_Pin;
+  /*Configure GPIO pins : BUTTON1_Pin BUTTON2_Pin BUTTON3_Pin */
+  GPIO_InitStruct.Pin = BUTTON1_Pin|BUTTON2_Pin|BUTTON3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LED_RED_2_Pin LED_YELLOW_2_Pin LED_GREEN_2_Pin */
-  GPIO_InitStruct.Pin = LED_RED_2_Pin|LED_YELLOW_2_Pin|LED_GREEN_2_Pin;
+  /*Configure GPIO pins : G1_Pin R2_Pin Y2_Pin G2_Pin
+                           R1_Pin Y1_Pin */
+  GPIO_InitStruct.Pin = G1_Pin|R2_Pin|Y2_Pin|G2_Pin
+                          |R1_Pin|Y1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -241,11 +257,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_TIM_PeriodElapsedCallback ( TIM_HandleTypeDef * htim )
-{
-	timerRun();
-	getKeyInput();
-}
+
 /* USER CODE END 4 */
 
 /**
